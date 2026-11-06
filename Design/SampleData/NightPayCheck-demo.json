@@ -1,0 +1,225 @@
+{
+  "comparisons" : [
+    {
+      "estimatedAtEntry" : 2988.85,
+      "gross" : 2969.35,
+      "id" : "76E68E46-0177-4067-B04D-5FFDA9004C31",
+      "periodEnd" : 815292000,
+      "periodStart" : 814078800,
+      "recordedAt" : 815668500
+    }
+  ],
+  "completedChecks" : 1,
+  "preferences" : {
+    "currency" : "USD",
+    "localeID" : "en_US",
+    "onboardingComplete" : true,
+    "periodAnchor" : 814078800,
+    "timeZoneID" : "America\/Chicago",
+    "weekAnchorMonday" : true
+  },
+  "rates" : {
+    "baseRate" : 38,
+    "nightDiff" : 4.5,
+    "nightEndMinute" : 420,
+    "nightStartMinute" : 1140,
+    "version" : 1,
+    "weekStartsOn" : 2,
+    "weekendDiff" : 3
+  },
+  "schemaVersion" : 1,
+  "shifts" : [
+    {
+      "actualBreakMinutes" : 30,
+      "actualEnd" : 814190400,
+      "actualStart" : 814147200,
+      "changes" : [
+
+      ],
+      "id" : "5A97804C-BD53-4D96-92E8-FC57C13D0D6A",
+      "note" : "",
+      "plannedBreakMinutes" : 30,
+      "plannedBreakPaid" : false,
+      "plannedEnd" : 814190400,
+      "plannedStart" : 814147200,
+      "sourceQuote" : "",
+      "timeZoneID" : "America\/Chicago",
+      "title" : "Telemetry"
+    },
+    {
+      "actualBreakMinutes" : 30,
+      "actualEnd" : 814364100,
+      "actualStart" : 814320000,
+      "changes" : [
+
+      ],
+      "id" : "BA48D09E-A428-47E8-8743-AEAF91C404AB",
+      "note" : "Stayed for morning handoff.",
+      "plannedBreakMinutes" : 30,
+      "plannedBreakPaid" : false,
+      "plannedEnd" : 814363200,
+      "plannedStart" : 814320000,
+      "sourceQuote" : "",
+      "timeZoneID" : "America\/Chicago",
+      "title" : "Cardiac step-down"
+    },
+    {
+      "actualBreakMinutes" : 30,
+      "actualEnd" : 814536000,
+      "actualStart" : 814492800,
+      "changes" : [
+
+      ],
+      "id" : "95BAA34A-F7AD-40E2-ABDE-A707996BC4DA",
+      "note" : "",
+      "plannedBreakMinutes" : 30,
+      "plannedBreakPaid" : false,
+      "plannedEnd" : 814536000,
+      "plannedStart" : 814492800,
+      "sourceQuote" : "",
+      "timeZoneID" : "America\/Chicago",
+      "title" : "Telemetry"
+    },
+    {
+      "actualBreakMinutes" : 30,
+      "actualEnd" : 814795500,
+      "actualStart" : 814752000,
+      "changes" : [
+
+      ],
+      "id" : "394DAE32-03E2-4884-9918-DF9D33A703EF",
+      "note" : "Stayed for morning handoff.",
+      "plannedBreakMinutes" : 30,
+      "plannedBreakPaid" : false,
+      "plannedEnd" : 814795200,
+      "plannedStart" : 814752000,
+      "sourceQuote" : "",
+      "timeZoneID" : "America\/Chicago",
+      "title" : "Med-surg float"
+    },
+    {
+      "actualBreakMinutes" : 30,
+      "actualEnd" : 814968000,
+      "actualStart" : 814924500,
+      "changes" : [
+
+      ],
+      "id" : "2F903CF5-D8A8-4503-A7F8-0F98EB619471",
+      "note" : "",
+      "plannedBreakMinutes" : 30,
+      "plannedBreakPaid" : false,
+      "plannedEnd" : 814968000,
+      "plannedStart" : 814924800,
+      "sourceQuote" : "",
+      "timeZoneID" : "America\/Chicago",
+      "title" : "Telemetry"
+    },
+    {
+      "actualBreakMinutes" : 30,
+      "actualEnd" : 815140800,
+      "actualStart" : 815097600,
+      "changes" : [
+
+      ],
+      "id" : "4F76E840-9C33-480D-AE07-F306D70340BB",
+      "note" : "",
+      "plannedBreakMinutes" : 30,
+      "plannedBreakPaid" : false,
+      "plannedEnd" : 815140800,
+      "plannedStart" : 815097600,
+      "sourceQuote" : "",
+      "timeZoneID" : "America\/Chicago",
+      "title" : "Cardiac step-down"
+    },
+    {
+      "actualBreakMinutes" : 30,
+      "actualEnd" : 815404200,
+      "actualStart" : 815360400,
+      "changes" : [
+
+      ],
+      "id" : "A78359D0-D61E-4D32-859F-0D74EAD94342",
+      "note" : "Stayed for morning handoff.",
+      "plannedBreakMinutes" : 30,
+      "plannedBreakPaid" : false,
+      "plannedEnd" : 815403600,
+      "plannedStart" : 815360400,
+      "sourceQuote" : "",
+      "timeZoneID" : "America\/Chicago",
+      "title" : "Telemetry"
+    },
+    {
+      "actualBreakMinutes" : 30,
+      "actualEnd" : 815576400,
+      "actualStart" : 815533200,
+      "changes" : [
+
+      ],
+      "id" : "E8E920C0-4A71-4AB9-866D-ABC212F9EC98",
+      "note" : "",
+      "plannedBreakMinutes" : 30,
+      "plannedBreakPaid" : false,
+      "plannedEnd" : 815576400,
+      "plannedStart" : 815533200,
+      "sourceQuote" : "",
+      "timeZoneID" : "America\/Chicago",
+      "title" : "Med-surg float"
+    },
+    {
+      "changes" : [
+
+      ],
+      "id" : "20AEB543-2E16-4B95-B628-6CAF1C3E1D2D",
+      "note" : "",
+      "plannedBreakMinutes" : 30,
+      "plannedBreakPaid" : false,
+      "plannedEnd" : 815749200,
+      "plannedStart" : 815706000,
+      "sourceQuote" : "",
+      "timeZoneID" : "America\/Chicago",
+      "title" : "Cardiac step-down"
+    },
+    {
+      "changes" : [
+
+      ],
+      "id" : "9175B0EF-F1E8-4ECE-A5EB-1B7A3760ECE6",
+      "note" : "",
+      "plannedBreakMinutes" : 30,
+      "plannedBreakPaid" : false,
+      "plannedEnd" : 816008400,
+      "plannedStart" : 815965200,
+      "sourceQuote" : "",
+      "timeZoneID" : "America\/Chicago",
+      "title" : "Telemetry"
+    },
+    {
+      "changes" : [
+
+      ],
+      "id" : "221175D1-12AF-431B-A815-ED71C3EB899B",
+      "note" : "",
+      "plannedBreakMinutes" : 30,
+      "plannedBreakPaid" : false,
+      "plannedEnd" : 816267600,
+      "plannedStart" : 816224400,
+      "sourceQuote" : "",
+      "timeZoneID" : "America\/Chicago",
+      "title" : "Telemetry"
+    },
+    {
+      "changes" : [
+
+      ],
+      "id" : "2B1CAEAC-B974-4802-AEBF-7CD197E09537",
+      "note" : "",
+      "plannedBreakMinutes" : 30,
+      "plannedBreakPaid" : false,
+      "plannedEnd" : 816440400,
+      "plannedStart" : 816397200,
+      "sourceQuote" : "",
+      "timeZoneID" : "America\/Chicago",
+      "title" : "Weekend float"
+    }
+  ]
+}
