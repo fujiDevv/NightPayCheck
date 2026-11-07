@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 W, H = 440, 956
 INK, PAPER, GOLD = "#242320", "#f6f3ec", "#f3b94e"
 PANELS = [
-    ("welcome", "Night shift pay,", "explained.", "Estimate your gross pay privately."),
+    ("welcome", "Missing $36", "on payday?", "Check the weekend line on your payslip."),
     ("roster", "Your nights,", "in one place.", "Keep planned shifts and actual hours together."),
     ("rates", "Set your", "hourly rates.", "Add your night and weekend differentials."),
     ("estimate", "See what your", "shifts earn.", "Follow the hours behind your gross estimate."),
@@ -75,8 +75,8 @@ def connected_layout():
         f'<image id="night-owl" x="99" y="290" width="385" height="440" href="{embedded(ROOT.parent / "Mascot" / "NightOwl.png")}"/>',
         '<g id="rate-sticker" transform="translate(32 765) rotate(-6)">',
         '<rect width="300" height="92" rx="18" fill="#151613" stroke="white" stroke-width="3"/>',
-        svg_text(19, 30, "NIGHT DIFFERENTIAL", 12, "#d0d1ca", 600, 1.1),
-        svg_text(18, 70, "+$4.50 / hour", 34, "white", 700, -1.2),
+        svg_text(19, 30, "WEEKEND EXTRA · EXAMPLE", 12, "#d0d1ca", 600, 1.1),
+        svg_text(18, 70, "12h × $3 = $36", 34, "white", 700, -1.2),
         '</g>',
         '<g id="shift-sticker" transform="translate(698 849) rotate(5)">',
         '<rect width="210" height="52" rx="26" fill="#151613" stroke="white" stroke-width="3"/>',

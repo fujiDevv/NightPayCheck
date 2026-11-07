@@ -141,22 +141,28 @@ struct SettingsView: View {
 }
 
 struct PaywallCard: View {
+    @Environment(LifetimeAccess.self) private var access
     @Environment(NightStore.self) private var store
     @State private var product: Product?
-    @State private var status = "Free: 2 pay-period checks. Lifetime unlock $6.99."
+    @State private var status = "Save two pay periods free."
     @State private var busy = false
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("\(min(store.data.completedChecks, 2)) of 2 free checks used").font(.headline)
-            Text(status).font(.caption).foregroundStyle(.secondary)
-            HStack {
-                Button(busy ? "Working…" : "Buy lifetime unlock") { Task { await buy() } }.disabled(busy || product == nil)
-                Button("Restore") { Task { await restore() } }.disabled(busy)
-            }.font(.subheadline.weight(.semibold))
-            Text("One-time purchase, works offline after first validation. Free checker stays usable for the current period.").font(.caption).foregroundStyle(.secondary)
+            Text(access.unlocked ? "Lifetime access active" : "\(min(store.data.comparisons.count, 2)) of 2 free periods saved").font(.headline)
+            if !access.unlocked {
+                Text(status).font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Button(busy ? "Working…" : "Unlock once" + (product.map { " · " + $0.displayPrice } ?? "")) { Task { await buy() } }.disabled(busy || product == nil)
+                    Button("Restore") { Task { await restore() } }.disabled(busy)
+                }.font(.subheadline.weight(.semibold))
+                Text("Unlock comparisons for additional pay periods. You can always revisit your saved periods.").font(.caption).foregroundStyle(.secondary)
+            }
         }
         .task {
-            do { product = try await Product.products(for: ["com.fujidevv.nightpaycheck.lifetime"]).first }
+            do {
+                product = try await Product.products(for: [LifetimeAccess.productID]).first
+                if product == nil { status = "Lifetime purchase is currently unavailable." }
+            }
             catch { status = "Store unavailable offline — your saved records still work." }
         }
     }
@@ -164,8 +170,18 @@ struct PaywallCard: View {
         guard let product else { return }
         busy = true; defer { busy = false }
         do {
-            if case .success(let verification) = try await product.purchase() {
-                if case .verified(let transaction) = verification { await transaction.finish(); status = "Unlocked. Thank you." }
+            switch try await product.purchase() {
+            case .success(.verified(let transaction)):
+                await access.refresh()
+                await transaction.finish()
+            case .success(.unverified):
+                status = "Apple could not verify this purchase."
+            case .pending:
+                status = "Purchase awaiting approval."
+            case .userCancelled:
+                break
+            @unknown default:
+                status = "Purchase status unavailable. Use Restore to check access."
             }
         } catch { status = error.localizedDescription }
     }
@@ -173,9 +189,8 @@ struct PaywallCard: View {
         busy = true; defer { busy = false }
         do {
             try await AppStore.sync()
-            for await result in Transaction.currentEntitlements {
-                if case .verified = result { status = "Purchase restored."; return }
-            }
+            await access.refresh()
+            if access.unlocked { status = "Purchase restored."; return }
             status = "No purchase found."
         } catch { status = error.localizedDescription }
     }

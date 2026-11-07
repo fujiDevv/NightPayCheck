@@ -167,3 +167,30 @@ struct NightPayEngineTests {
         #expect(a.paidMinutes == 1380)
     }
 }
+
+@Suite("Payslip reconciliation")
+struct ComparisonTests {
+    @Test func confirmedCategoryAndResidualSurviveBackup() throws {
+        let id = UUID()
+        let estimate = NightEstimate(lines: [
+            CalculationLine(shiftID: id, title: "Night", kind: "Regular", minutes: 720, hourlyRate: 30, amount: 360),
+            CalculationLine(shiftID: id, title: "Night", kind: "Weekend differential", minutes: 720, hourlyRate: 3, amount: 36)
+        ], paidMinutes: 720, workedMinutes: 720, actualShiftCount: 1, projectedShiftCount: 0)
+        let line = MatchedPayLine(category: .weekend, label: "Weekend line absent", paid: 0, estimate: estimate)
+        let dates = period("2026-11-02 00:00", "2026-11-16 00:00")
+        var data = NightAppData()
+        data.comparisons = [PayslipCompare(periodStart: dates.start, periodEnd: dates.end, gross: 350,
+                                           estimatedAtEntry: estimate.total, matchedLines: [line], hasOtherRules: true)]
+        let restored = try JSONDecoder().decode(NightAppData.self, from: JSONEncoder().encode(data))
+        try restored.validate()
+        #expect(restored.comparisons.first?.remainingDifference == -10)
+        #expect(restored.comparisons.first?.matchedLines?.first?.difference == -36)
+    }
+
+    @Test func grossOnlyRecordRemainsReadable() throws {
+        let json = #"{"id":"857CED14-1797-4EE7-A672-61CE9EFDC5C7","periodStart":0,"periodEnd":1209600,"gross":320,"estimatedAtEntry":350,"recordedAt":1}"#
+        let entry = try JSONDecoder().decode(PayslipCompare.self, from: Data(json.utf8))
+        #expect(entry.matchedLines == nil)
+        #expect(entry.remainingDifference == -30)
+    }
+}

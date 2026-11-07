@@ -67,3 +67,38 @@ enum ExportService {
         return count
     }
 }
+
+import StoreKit
+
+@MainActor @Observable
+final class LifetimeAccess {
+    static let productID = "com.fujidevv.nightpaycheck.lifetime"
+    private(set) var unlocked = false
+    private(set) var checked = false
+
+    func refresh() async {
+        var found = false
+        for await entitlement in Transaction.currentEntitlements {
+            if case .verified(let transaction) = entitlement,
+               transaction.productID == Self.productID, transaction.revocationDate == nil {
+                found = true
+            }
+        }
+        unlocked = found
+        checked = true
+    }
+
+    func observe() async {
+        let listener = Task {
+            for await update in Transaction.updates {
+                if case .verified(let transaction) = update, transaction.productID == Self.productID {
+                    await refresh()
+                    await transaction.finish()
+                }
+            }
+        }
+        defer { listener.cancel() }
+        await refresh()
+        await withTaskCancellationHandler { await listener.value } onCancel: { listener.cancel() }
+    }
+}

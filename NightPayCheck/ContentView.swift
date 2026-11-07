@@ -4,6 +4,7 @@ import SwiftData
 struct ContentView: View {
     @Environment(\.modelContext) private var context
     @State private var store = NightStore()
+    @State private var access = LifetimeAccess()
     @State private var tab = "roster"
 
     var body: some View {
@@ -33,6 +34,8 @@ struct ContentView: View {
             }
         }
         .environment(store)
+        .environment(access)
+        .task { await access.observe() }
         .tint(NightTheme.accent)
         .task { store.load(context) }
         .alert("Couldn't complete that change", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {

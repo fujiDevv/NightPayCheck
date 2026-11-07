@@ -124,6 +124,30 @@ struct PayPreferences: Codable {
     var periodDays: Int { 14 }
 }
 
+enum PayCategory: String, Codable, CaseIterable {
+    case regular = "Regular", overtime = "Overtime"
+    case night = "Night differential", weekend = "Weekend differential"
+}
+
+struct MatchedPayLine: Codable, Identifiable {
+    var id: PayCategory { category }
+    let category: PayCategory
+    let label: String
+    let paid: Decimal
+    let expected: Decimal
+    let minutes: Int
+    var difference: Decimal { paid - expected }
+
+    init(category: PayCategory, label: String, paid: Decimal, estimate: NightEstimate) {
+        self.category = category
+        self.label = label
+        self.paid = Money.rounded(paid, currency: "USD")
+        let lines = estimate.lines.filter { $0.kind == category.rawValue }
+        expected = lines.reduce(0) { $0 + $1.amount }
+        minutes = lines.reduce(0) { $0 + $1.minutes }
+    }
+}
+
 struct PayslipCompare: Codable, Identifiable {
     var id = UUID()
     var periodStart: Date
@@ -131,6 +155,11 @@ struct PayslipCompare: Codable, Identifiable {
     var gross: Decimal
     var estimatedAtEntry: Decimal
     var recordedAt = Date()
+    var matchedLines: [MatchedPayLine]?
+    var hasOtherRules: Bool?
+    var remainingDifference: Decimal {
+        gross - estimatedAtEntry - (matchedLines ?? []).reduce(0) { $0 + $1.difference }
+    }
 }
 
 struct NightAppData: Codable {
@@ -155,6 +184,11 @@ struct NightAppData: Codable {
         try rates.validate()
         for shift in shifts { try shift.validate() }
         for comparison in comparisons {
+            let lines = comparison.matchedLines ?? []
+            guard Set(lines.map(\.category)).count == lines.count,
+                  lines.allSatisfy({ !$0.label.isEmpty && $0.minutes >= 0 && $0.paid >= 0 && $0.expected >= 0 }) else {
+                throw InputError.invalid("A saved payslip line is invalid.")
+            }
             guard SupportedDates.contains(comparison.periodStart),
                   SupportedDates.contains(comparison.periodEnd),
                   comparison.periodEnd > comparison.periodStart,

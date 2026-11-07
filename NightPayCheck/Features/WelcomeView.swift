@@ -30,6 +30,9 @@ struct WelcomeView: View {
                         DatePicker("Period starts", selection: $preferences.periodAnchor, displayedComponents: .date)
                             .environment(\.timeZone, TimeZone(identifier: preferences.timeZoneID) ?? .current)
                     }
+                    NightSection("Check your pay rules") {
+                        Text("This estimate uses biweekly USD pay, Saturday/Sunday premiums, and weekly overtime after 40 hours at 1.5× base. Daily overtime, holiday rates, bonuses and blended overtime rates are outside this estimate.")
+                    }
                 } else {
                     HStack { Spacer(); NightOwl(height: 186); Spacer() }
                         .padding(.vertical, 24)

@@ -163,6 +163,8 @@ struct ShiftEditView: View {
     @State private var end: Date = Date()
     @State private var breakMinutes = 30
     @State private var breakPaid = false
+    @State private var workedBreak = 30
+    @State private var workedBreakPaid = false
     @State private var recordActuals = false
     @State private var actualStart: Date = Date()
     @State private var actualEnd: Date = Date()
@@ -185,6 +187,8 @@ struct ShiftEditView: View {
                 if recordActuals {
                     DatePicker("Actual start", selection: $actualStart)
                     DatePicker("Actual end", selection: $actualEnd)
+                    Stepper("Actual meal: \(workedBreak) minutes", value: $workedBreak, in: 0...120, step: 5)
+                    Toggle("Actual break was paid", isOn: $workedBreakPaid)
                 }
             } header: { Text("Hours worked") } footer: {
                 Text("Planned vs actual start/end is kept in history. Actuals replace planned hours in the estimate.")
@@ -202,6 +206,7 @@ struct ShiftEditView: View {
             if let shift {
                 start = shift.plannedStart; end = shift.plannedEnd
                 breakMinutes = shift.plannedBreakMinutes; breakPaid = shift.plannedBreakPaid
+                workedBreak = shift.breakMinutes; workedBreakPaid = shift.breakPaid
                 recordActuals = shift.isActual
                 actualStart = shift.actualStart ?? shift.plannedStart
                 actualEnd = shift.actualEnd ?? shift.plannedEnd
@@ -210,6 +215,12 @@ struct ShiftEditView: View {
                 let day = store.calendar.startOfDay(for: defaultDate)
                 start = store.calendar.date(byAdding: .hour, value: 19, to: day)!
                 end = store.calendar.date(byAdding: .hour, value: 31, to: day)!
+            }
+        }
+        .onChange(of: recordActuals) { _, enabled in
+            if enabled, shift?.isActual != true {
+                actualStart = start; actualEnd = end
+                workedBreak = breakMinutes; workedBreakPaid = breakPaid
             }
         }
         .confirmationDialog("Delete this shift?", isPresented: $confirmDelete, titleVisibility: .visible) {
@@ -234,7 +245,7 @@ struct ShiftEditView: View {
             draft.plannedBreakMinutes = breakMinutes; draft.plannedBreakPaid = breakPaid
             if recordActuals {
                 draft.actualStart = minute(actualStart); draft.actualEnd = minute(actualEnd)
-                draft.actualBreakMinutes = breakMinutes; draft.actualBreakPaid = breakPaid
+                draft.actualBreakMinutes = workedBreak; draft.actualBreakPaid = workedBreakPaid
             } else { draft.actualStart = nil; draft.actualEnd = nil; draft.actualBreakMinutes = nil; draft.actualBreakPaid = nil }
             draft.note = note
             try draft.validate()

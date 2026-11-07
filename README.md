@@ -16,7 +16,7 @@ Built as a focused sister app to [ShiftClock](../ShiftClock/README.md), reusing 
 2. Confirm roster — paste/photo → confirm shifts
 3. Rates — 3 fields + night window + live sample
 4. Estimate — Regular / Night / Weekend / OT / Total + assumptions footer
-5. Compare — payslip gross → variance + 5-item checklist
+5. Compare — enter gross, confirm employer labels and category totals, and review the remaining difference. Saved periods retain their original line estimates. Apple Intelligence can suggest categories on supported devices; manual matching works offline.
 6. Settings — backup/export, reminders, purchase/restore, delete
 
 ## Getting started

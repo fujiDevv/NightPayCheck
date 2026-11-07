@@ -2,6 +2,9 @@ import SwiftUI
 
 struct CompareView: View {
     @Environment(NightStore.self) private var store
+    @Environment(LifetimeAccess.self) private var access
+    @State private var lines: [MatchedPayLine] = []
+    @State private var otherRules = false
     @State private var date = Date()
     @State private var payslip = ""
     var periodOverride: DateInterval?
@@ -30,32 +33,66 @@ struct CompareView: View {
                     Text("\(estimate.actualShiftCount) actual · \(estimate.projectedShiftCount) planned · \(hoursText(estimate.paidMinutes)) paid")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                NightSection {
-                    TextField("Payslip gross (USD)", text: $payslip)
-                        .keyboardType(.decimalPad).textFieldStyle(.roundedBorder)
-                        .accessibilityIdentifier("payslipGross")
-                    if let entered = Money.parseGross(payslip, locale: Locale.current) {
-                        let rounded = Money.rounded(entered, currency: "USD")
-                        let variance = rounded - estimate.total
-                        Text(variance == 0 ? "Matches your configured estimate." : "\(store.money(abs(variance))) \(variance < 0 ? "below" : "above") your configured estimate\(pct(variance, base: estimate.total))")
-                            .font(.headline).accessibilityIdentifier("varianceLabel")
-                        Text("Check the pay-period dates, actual hours, paid-break treatment, premium eligibility, and entered rates.")
-                            .font(.footnote).foregroundStyle(.secondary)
-                        Button("Save comparison") {
-                            let entry = PayslipCompare(periodStart: period.start, periodEnd: period.end,
-                                gross: rounded, estimatedAtEntry: estimate.total)
-                            if store.update({ data in
-                                data.comparisons.removeAll { $0.periodStart == period.start && $0.periodEnd == period.end }
-                                data.comparisons.append(entry)
-                                data.completedChecks += 1
-                            }) { payslip = "" }
-                        }.buttonStyle(NightPrimaryButton()).accessibilityIdentifier("saveComparison")
-                    } else if !payslip.isEmpty {
-                        Text("Enter a nonnegative amount using your keyboard's decimal separator, without grouping separators.")
-                            .font(.footnote).foregroundStyle(.secondary)
+                if !access.unlocked && savedEntry == nil && store.data.comparisons.count >= 2 {
+                    NightSection("Check another pay period") {
+                        if access.checked { PaywallCard() } else { ProgressView("Checking lifetime access") }
                     }
-                } header: { Text("Enter payslip gross") } footer: {
-                    Text("A variance is a prompt to review your inputs, not a conclusion about your employer's payroll. \(NightPayExplanation.disclaimer)")
+                } else if store.data.rates.baseRate == 0 || estimate.paidMinutes == 0 {
+                    NightSection("Before comparing") {
+                        if store.data.rates.baseRate == 0 {
+                            NavigationLink("Set your base pay rate") { RatesView() }
+                        }
+                        if estimate.paidMinutes == 0 {
+                            Text("Add worked shifts for this pay period in Roster.")
+                        }
+                    }
+                } else {
+                    NightSection {
+                        TextField("Payslip gross (USD)", text: $payslip)
+                            .keyboardType(.decimalPad).textFieldStyle(.roundedBorder)
+                            .accessibilityIdentifier("payslipGross")
+                        if let entered = Money.parseGross(payslip, locale: Locale.current) {
+                            let rounded = Money.rounded(entered, currency: "USD")
+                            let variance = rounded - estimate.total
+                            Text(variance == 0 ? "Matches your configured estimate." : "\(store.money(abs(variance))) \(variance < 0 ? "below" : "above") your configured estimate\(pct(variance, base: estimate.total))")
+                                .font(.headline).accessibilityIdentifier("varianceLabel")
+                            if estimate.projectedShiftCount > 0 {
+                                Text("This estimate includes planned shifts. Review clock times and meals in Roster before relying on the difference.").font(.footnote)
+                            }
+                            PayLineEditor(estimate: estimate, lines: $lines)
+                            let entry = comparison(gross: rounded, estimate: estimate)
+                            ForEach(entry.matchedLines ?? []) { line in
+                                HStack {
+                                    lineSummary(line)
+                                    Spacer()
+                                    Button("Remove") { lines.removeAll { $0.category == line.category } }
+                                        .accessibilityLabel("Remove \(line.category.rawValue)")
+                                }
+                            }
+                            if lines.isEmpty {
+                                Text("Gross alone cannot identify a missing premium. Match a payslip line to investigate.").font(.footnote)
+                            } else {
+                                Text("Remaining difference: \(store.money(entry.remainingDifference))")
+                                    .font(.headline)
+                            }
+                            Toggle("Other pay rules apply this period", isOn: $otherRules)
+                            if otherRules {
+                                Text("Holiday pay, bonuses, daily or blended overtime can affect this comparison. Review these separately.").font(.footnote)
+                            }
+                            Button("Save comparison") {
+                                if store.update({ data in
+                                    data.comparisons.removeAll { $0.periodStart == period.start && $0.periodEnd == period.end }
+                                    data.comparisons.append(entry)
+                                    data.completedChecks = data.comparisons.count
+                                }) { resetDraft() }
+                            }.buttonStyle(NightPrimaryButton()).accessibilityIdentifier("saveComparison")
+                        } else if !payslip.isEmpty {
+                            Text("Enter a nonnegative amount using your keyboard's decimal separator, without grouping separators.")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
+                    } header: { Text("Enter payslip gross") } footer: {
+                        Text("A variance is a prompt to review your inputs, not a conclusion about your employer's payroll. \(NightPayExplanation.disclaimer)")
+                    }
                 }
                 NightSection {
                     DisclosureGroup("Review checklist") {
@@ -74,6 +111,16 @@ struct CompareView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Payslip: \(store.money(entry.gross))").font(.headline)
                                 Text("Estimate when saved: \(store.money(entry.estimatedAtEntry))").font(.caption)
+                                ForEach(entry.matchedLines ?? []) { line in lineSummary(line) }
+                                if !(entry.matchedLines ?? []).isEmpty {
+                                    Text("Remaining difference: \(store.money(entry.remainingDifference))")
+                                }
+                                if entry.hasOtherRules == true { Text("Other pay rules flagged for review.") }
+                                Button("Revise with current estimate") {
+                                    payslip = entry.gross.formatted(.number.grouping(.never))
+                                    lines = entry.matchedLines ?? []
+                                    otherRules = entry.hasOtherRules ?? false
+                                }
                                 Text("Saved \(entry.recordedAt.formatted(date: .abbreviated, time: .shortened))").font(.caption).foregroundStyle(.secondary)
                             }
                         }
@@ -81,9 +128,34 @@ struct CompareView: View {
                 }
             }
         }
+        .onChange(of: period) { resetDraft() }
         .navigationTitle("Compare")
         .navigationBarTitleDisplayMode(.large)
         .environment(\.timeZone, store.calendar.timeZone)
+    }
+
+    private var savedEntry: PayslipCompare? {
+        store.data.comparisons.first { $0.periodStart == period.start && $0.periodEnd == period.end }
+    }
+
+    private func resetDraft() {
+        payslip = ""; lines = []; otherRules = false
+    }
+
+    private func comparison(gross: Decimal, estimate: NightEstimate) -> PayslipCompare {
+        let current = lines.map {
+            MatchedPayLine(category: $0.category, label: $0.label, paid: $0.paid, estimate: estimate)
+        }
+        return PayslipCompare(periodStart: period.start, periodEnd: period.end, gross: gross,
+                              estimatedAtEntry: estimate.total, matchedLines: current, hasOtherRules: otherRules)
+    }
+
+    private func lineSummary(_ line: MatchedPayLine) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("\(line.label) · \(line.category.rawValue)").font(.headline)
+            Text("\(hoursText(line.minutes)) estimated · \(store.money(line.expected)) expected")
+            Text("\(store.money(line.paid)) on payslip · \(store.money(line.difference)) difference")
+        }.font(.footnote)
     }
 
     private var periodLabel: String {
