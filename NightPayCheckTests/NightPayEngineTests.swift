@@ -194,3 +194,87 @@ struct ComparisonTests {
         #expect(entry.remainingDifference == -30)
     }
 }
+
+@Suite("Roster review")
+struct RosterReviewTests {
+    let zone = "America/Chicago"
+    var dates: DateInterval { period("2026-11-02 00:00", "2026-11-16 00:00") }
+
+    @Test func weekdayRequiresWeekAndSecondWeekIsExplicit() throws {
+        #expect(throws: (any Error).self) {
+            try NightDraftParser.parse("Mon 19:00-07:00", period: dates, timeZoneID: zone)
+        }
+        let drafts = try NightDraftParser.parse("Mon 19:00-07:00", period: dates, timeZoneID: zone, weekOffset: 1)
+        #expect(drafts.first?.day == utc("2026-11-09 00:00"))
+    }
+
+    @Test func dateOverridesWeekAndInvalidDateCannotFallBack() throws {
+        let drafts = try NightDraftParser.parse("2026-11-03 1900-0700", period: dates, timeZoneID: zone, weekOffset: 1)
+        #expect(drafts.first?.day == utc("2026-11-03 00:00"))
+        #expect(drafts.first?.startMinute == 1140)
+        #expect(throws: (any Error).self) {
+            try NightDraftParser.parse("Mon 11/31 19:00-07:00", period: dates, timeZoneID: zone, weekOffset: 0)
+        }
+        #expect(throws: (any Error).self) {
+            try NightDraftParser.parse("Mon 19:00-07:00 Tue 19:00-07:00", period: dates, timeZoneID: zone, weekOffset: 0)
+        }
+    }
+
+    @Test func headersAndAmbiguousCellsStayVisible() throws {
+        let review = try NightDraftParser.review("Team 1\nMonday Tuesday\nNight Off\n19:00-07:00\nFri 19:00-07:00",
+                                                period: dates, timeZoneID: zone, weekOffset: 0)
+        #expect(review.drafts.count == 1)
+        #expect(review.excluded.count == 3)
+        #expect(review.unresolved == ["19:00-07:00"])
+    }
+
+    @Test func editedMealsPersistAndOverlapsRejectWholeImport() throws {
+        var drafts = try NightDraftParser.parse("Mon 19:00-07:00", period: dates, timeZoneID: zone, weekOffset: 0)
+        drafts[0].breakMinutes = 45
+        drafts[0].breakPaid = true
+        let saved = try NightDraftParser.materialize(drafts, timeZoneID: zone, existing: [])
+        #expect(saved.first?.plannedBreakMinutes == 45)
+        #expect(saved.first?.plannedBreakPaid == true)
+        #expect(try NightDraftParser.materialize(drafts, timeZoneID: zone, existing: saved).isEmpty)
+        var overlapping = saved[0]
+        overlapping.plannedStart = overlapping.plannedStart.addingTimeInterval(-3600)
+        #expect(throws: (any Error).self) {
+            try NightDraftParser.materialize(drafts, timeZoneID: zone, existing: [overlapping])
+        }
+    }
+}
+
+@Suite("Roster table columns")
+struct RosterLayoutTests {
+    @Test func oneRowUsesHeadersAndMultipleRowsRemainUnresolved() {
+        let days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+        let headers = days.enumerated().map {
+            RosterTextLayout.Cell(text: $0.element,
+                                  bounds: CGRect(x: Double($0.offset) / 7 + 0.02, y: 0.8, width: 0.08, height: 0.03))
+        }
+        let shift = RosterTextLayout.Cell(text: "19:00-07:00",
+                                         bounds: CGRect(x: 1.0 / 7 + 0.02, y: 0.6, width: 0.08, height: 0.03))
+        #expect(RosterTextLayout.text(from: headers + [shift]).contains("Monday 19:00-07:00"))
+        let another = RosterTextLayout.Cell(text: "19:00-07:00",
+                                           bounds: CGRect(x: 1.0 / 7 + 0.02, y: 0.4, width: 0.08, height: 0.03))
+        #expect(!RosterTextLayout.text(from: headers + [shift, another]).contains("Monday 19:00"))
+        #expect(RosterTextLayout.text(from: [shift]) == shift.text)
+    }
+}
+
+@Suite("Roster repeat import")
+struct RosterRepeatImportTests {
+    @Test func existingActualsSurviveAndOnlyNewShiftIsAdded() throws {
+        let dates = period("2026-11-02 00:00", "2026-11-16 00:00")
+        let drafts = try NightDraftParser.parse("Mon 19:00-07:00\nTue 19:00-07:00", period: dates,
+                                               timeZoneID: "America/Chicago", weekOffset: 0)
+        var existing = try NightDraftParser.materialize([drafts[0]], timeZoneID: "America/Chicago", existing: [])[0]
+        existing.actualStart = existing.plannedStart
+        existing.actualEnd = existing.plannedEnd.addingTimeInterval(600)
+        let added = try NightDraftParser.materialize(drafts, timeZoneID: "America/Chicago", existing: [existing])
+        #expect(added.count == 1)
+        #expect(added[0].plannedStart == utc("2026-11-03 19:00"))
+        #expect(existing.actualEnd == utc("2026-11-03 07:10"))
+        #expect(try NightDraftParser.materialize(drafts, timeZoneID: "America/Chicago", existing: [existing] + added).isEmpty)
+    }
+}

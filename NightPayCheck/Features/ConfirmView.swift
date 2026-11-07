@@ -1,18 +1,11 @@
 import SwiftUI
-import PhotosUI
-import Vision
 
 struct ConfirmView: View {
     @Environment(NightStore.self) private var store
     @State private var date = Date()
-    @State private var rosterText = ""
-    @State private var drafts: [NightDraft] = []
-    @State private var draftError: String?
     @State private var editing: NightShift?
     @State private var adding = false
     @State private var importingRoster = false
-    @State private var photo: PhotosPickerItem?
-    @State private var busy = false
 
     private var period: DateInterval { NightPayEngine.payPeriod(containing: date, preferences: store.data.preferences) }
     private var shifts: [NightShift] {
@@ -42,7 +35,7 @@ struct ConfirmView: View {
                                 Spacer()
                                 Text(shift.isActual ? "Actual" : "Planned").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                             }
-                            Text("\(shift.start.formatted(date: .abbreviated, time: .shortened)) → \(shift.end.formatted(date: .abbreviated, time: .shortened))")
+                            Text("\(shiftDate(shift.start)) → \(shiftDate(shift.end))")
                                 .font(.subheadline)
                             Text("Meal: \(shift.breakMinutes)m \(shift.breakPaid ? "paid" : "unpaid")")
                                 .font(.caption).foregroundStyle(.secondary)
@@ -55,52 +48,7 @@ struct ConfirmView: View {
             }.buttonStyle(NightPrimaryButton())
             NightSection {
                 DisclosureGroup("Import roster", isExpanded: $importingRoster) {
-                    VStack(alignment: .leading, spacing: 14) {
-                        Text("Paste one shift per line or read a roster photo. Review the drafts before saving.")
-                            .font(.subheadline).foregroundStyle(.secondary)
-                        PhotosPicker(selection: $photo, matching: .images) {
-                            Label("Choose roster photo", systemImage: "photo.badge.magnifyingglass")
-                        }.disabled(busy)
-                        TextEditor(text: $rosterText)
-                            .frame(minHeight: 90).overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.secondary.opacity(0.2)))
-                            .accessibilityLabel("Roster text").accessibilityIdentifier("rosterText")
-                        Text("Example: Fri 19:00-07:00")
-                            .font(.caption).foregroundStyle(.secondary)
-                        Button("Build drafts") {
-                            do {
-                                drafts = try NightDraftParser.parse(rosterText, period: period, timeZoneID: store.data.preferences.timeZoneID)
-                                draftError = nil
-                            } catch { draftError = error.localizedDescription; drafts = [] }
-                        }.accessibilityIdentifier("buildDrafts")
-
-                        if let draftError { Label(draftError, systemImage: "exclamationmark.triangle").font(.footnote) }
-                        if !drafts.isEmpty {
-                            Text("\(drafts.count) drafts — review each time, then save all.").font(.headline)
-                            ForEach(drafts) { draft in
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text(draft.source).font(.subheadline.weight(.semibold))
-                                        Text("\(dayLabel(draft.day)) · \(clockLabel(draft.startMinute)) → \(clockLabel(draft.endMinute))")
-                                            .font(.caption).foregroundStyle(.secondary)
-                                    }
-                                    Spacer()
-                                    Button { drafts.removeAll { $0.id == draft.id } } label: {
-                                        Image(systemName: "trash").frame(minWidth: 44, minHeight: 44)
-                                    }.accessibilityLabel("Remove draft")
-                                }.padding(.vertical, 4)
-                            }
-                            Button("Save \(drafts.count) confirmed shifts") {
-                                do {
-                                    let materialized = try NightDraftParser.materialize(drafts, timeZoneID: store.data.preferences.timeZoneID, existing: store.data.shifts)
-                                    if store.update({ $0.shifts.append(contentsOf: materialized); $0.shifts.sort { $0.plannedStart < $1.plannedStart } }) {
-                                        drafts = []; rosterText = ""
-                                    }
-                                } catch { store.error = error.localizedDescription }
-                            }
-                            .accessibilityIdentifier("saveDrafts")
-                            .font(.headline)
-                        }
-                    }.padding(.top, 12)
+                    RosterImportView(period: period)
                 }.font(.headline)
                 Divider()
                 NavigationLink { RatesView() } label: {
@@ -114,43 +62,17 @@ struct ConfirmView: View {
         }
         .navigationTitle("Roster")
         .navigationBarTitleDisplayMode(.large)
-        .onChange(of: period) { drafts = []; draftError = nil }
         .environment(\.timeZone, store.calendar.timeZone)
-        .onChange(of: photo) { _, item in
-            guard let item else { return }
-            busy = true
-            Task {
-                defer { busy = false }
-                do {
-                    guard let data = try await item.loadTransferable(type: Data.self) else {
-                        throw InputError.invalid("This photo couldn't be opened.")
-                    }
-                    rosterText = try await recognize(data)
-                } catch { store.error = error.localizedDescription }
-            }
-        }
         .sheet(item: $editing) { shift in NavigationStack { ShiftEditView(shift: shift) } }
         .sheet(isPresented: $adding) { NavigationStack { ShiftEditView(shift: nil, defaultDate: date) } }
     }
 
-    private func dayLabel(_ day: Date) -> String {
-        let f = DateFormatter(); f.dateFormat = "E MMM d"; f.timeZone = store.calendar.timeZone
-        return f.string(from: day)
-    }
-    private func clockLabel(_ minute: Int) -> String {
-        String(format: "%02d:%02d", minute / 60, minute % 60)
-    }
-    private func recognize(_ data: Data) async throws -> String {
-        guard data.count <= 20_000_000 else { throw InputError.invalid("Choose a roster photo smaller than 20 MB.") }
-        return try await Task.detached(priority: .userInitiated) {
-            let request = VNRecognizeTextRequest()
-            request.recognitionLevel = .accurate
-            request.usesLanguageCorrection = false
-            try VNImageRequestHandler(data: data).perform([request])
-            let text = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n")
-            guard !text.isEmpty else { throw InputError.invalid("No readable text found. Try a clearer photo or type the shifts.") }
-            return text
-        }.value
+    private func shiftDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        formatter.timeZone = store.calendar.timeZone
+        return formatter.string(from: date)
     }
 }
 
